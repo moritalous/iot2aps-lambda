@@ -1,6 +1,63 @@
-import json
+import calendar
+import logging
+import os
+from datetime import datetime
 
-# import requests
+import botocore.session
+import requests
+import requests_aws4auth
+import snappy
+
+from remote_pb2 import WriteRequest
+from types_pb2 import Label, Labels, Sample, TimeSeries
+
+workspace_id=os.environ['WORKSPACE_ID']
+metrics_name=os.environ['METRICS_NAME']
+
+service = 'aps'
+region = os.environ['AWS_REGION']
+host = '{service}-workspaces.{region}.amazonaws.com'.format(service=service, region=region)
+endpoint = 'https://{host}/workspaces/{workspace_id}/api/v1/remote_write'.format(host=host, workspace_id=workspace_id)
+content_type = 'application/x-protobuf'
+
+headers = {
+    'Content-Type':content_type,
+    'Content-Encoding': 'snappy',
+    'X-Prometheus-Remote-Write-Version': '0.1.0',
+    'User-Agent': 'Prometheus/2.20.1'
+}
+
+def create_body(thing_name, timestamp, data):
+    write_request = WriteRequest()
+
+    for key in data.keys():
+        val = data[key]
+
+        series = write_request.timeseries.add()
+
+        # name label always required
+        label = series.labels.add()
+        label.name = "__name__"
+        label.value = "iot_metrics"
+        
+        # as many labels you like
+        label = series.labels.add()
+        label.name = "thing_name"
+        label.value = thing_name
+
+        # as many labels you like
+        label = series.labels.add()
+        label.name = "sensor"
+        label.value = key
+
+        sample = series.samples.add()
+        sample.value = val
+        sample.timestamp = timestamp 
+
+    uncompressed = write_request.SerializeToString()
+    compressed = snappy.compress(uncompressed)
+
+    return compressed
 
 
 def lambda_handler(event, context):
@@ -9,34 +66,28 @@ def lambda_handler(event, context):
     Parameters
     ----------
     event: dict, required
-        API Gateway Lambda Proxy Input Format
-
-        Event doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-input-format
+        IoT Core Input Format
 
     context: object, required
         Lambda Context runtime methods and attributes
-
-        Context doc: https://docs.aws.amazon.com/lambda/latest/dg/python-context-object.html
-
-    Returns
-    ------
-    API Gateway Lambda Proxy Output Format: dict
-
-        Return doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html
     """
 
-    # try:
-    #     ip = requests.get("http://checkip.amazonaws.com/")
-    # except requests.RequestException as e:
-    #     # Send some context about this error to Lambda Logs
-    #     print(e)
+    print(event)
 
-    #     raise e
+    auth = requests_aws4auth.AWS4Auth(
+                refreshable_credentials=botocore.session.Session().get_credentials(),
+                region=region, service=service)
+
+    thing_name = event['thing_name']
+    payload = event['payload']
+    timestamp = event['timestamp']
+    body = create_body(thing_name, timestamp, payload)
+
+    response = requests.post(endpoint, headers=headers, auth=auth, data=body)
+
+    print(response.status_code)
+    print(response.content)
 
     return {
-        "statusCode": 200,
-        "body": json.dumps({
-            "message": "hello world",
-            # "location": ip.text.replace("\n", "")
-        }),
+        "statusCode": response.status_code
     }

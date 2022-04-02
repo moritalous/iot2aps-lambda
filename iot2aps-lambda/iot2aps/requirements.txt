@@ -1,1 +1,5 @@
+botocore
+protobuf
+python-snappy
 requests
+requests-aws4auth
