@@ -38,7 +38,7 @@ def create_body(thing_name, timestamp, data):
         # name label always required
         label = series.labels.add()
         label.name = "__name__"
-        label.value = "iot_metrics"
+        label.value = metrics_name
         
         # as many labels you like
         label = series.labels.add()

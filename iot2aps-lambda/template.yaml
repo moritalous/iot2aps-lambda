@@ -10,6 +10,14 @@ Globals:
   Function:
     Timeout: 10
 
+Parameters:
+  WorkspaceIdParameter:
+    Type: String
+  MetricsNameParameter:
+    Type: String
+  TopicParameter:
+    Type: String
+
 Resources:
   IoT2ApsFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
@@ -21,13 +29,13 @@ Resources:
         - x86_64
       Environment:
         Variables:
-          WORKSPACE_ID: ws-05871e4c-f715-4877-b880-fa1bda971965
-          METRICS_NAME: iot_metrics
+          WORKSPACE_ID: !Ref WorkspaceIdParameter
+          METRICS_NAME: !Ref MetricsNameParameter
       Events:
         IoTRule:
           Type: IoTRule
-          Properties:
-            Sql: SELECT topic() as topic, clientid() as thing_name, timestamp() as timestamp, * as payload FROM 'topic/test'
+          Properties: 
+            Sql: !Sub "SELECT topic() as topic, clientid() as thing_name, timestamp() as timestamp, * as payload FROM '${TopicParameter}'"
       Policies:
         - AmazonPrometheusRemoteWriteAccess
 
