@@ -71,3 +71,21 @@ Creating AWS Resource
 | IoT2ApsFunctionIoTRule | AWS::IoT::TopicRule |
 | IoT2ApsFunctionRole | AWS::IAM::Role |
 | IoT2ApsFunction | AWS::Lambda::Function |
+
+# Test
+
+* create `.env` file in tests directory
+
+```
+WORKSPACE_ID=ws-05871e4c-f715-4877-b880-fa1bda971965
+METRICS_NAME=sensor_metrics
+AWS_REGION=ap-northeast-1
+```
+
+* run pytest
+
+in iot2aps-lambda directory
+
+```
+PYTHONPATH=iot2aps/ python3.9 -m pytest
+```
